@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachable Machine Webcam</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+        }
+        video {
+            width: 640px;
+            height: 480px;
+        }
+        #result {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 18px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <video id="webcam" autoplay playsinline></video>
+    <div id="result"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script>
+        let model;
+        let webcam;
+        let resultElement;
+
+        async function setupWebcam() {
+            const video = document.getElementById('webcam');
+            const stream = await navigator.mediaDevices.getUserMedia({ 'video': true });
+            video.srcObject = stream;
+
+            return new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    resolve();
+                };
+            });
+        }
+
+        async function loadTeachableMachineModel() {
+            const URL = 'https://teachablemachine.withgoogle.com/models/yAes2LPkm/';
+            model = await tf.loadLayersModel(`${URL}model.json`);
+        }
+
+        async function predictWebcam() {
+            while (true) {
+                const img = tf.browser.fromPixels(document.getElementById('webcam'));
+                const resizedImg = tf.image.resizeBilinear(img, [224, 224]);
+                const expandedImg = resizedImg.expandDims(0);
+                const prediction = await model.predict(expandedImg);
+                const index = tf.argMax(prediction, 1).dataSync()[0];
+
+                const classes = ['테스트1', '테스트2']; // Replace with your class labels
+                resultElement.innerText = `Prediction: ${classes[index]}`;
+
+                img.dispose();
+                resizedImg.dispose();
+                expandedImg.dispose();
+                prediction.dispose();
+
+                await tf.nextFrame();
+            }
+        }
+
+        window.onload = async () => {
+            resultElement = document.getElementById('result');
+            await setupWebcam();
+            await loadTeachableMachineModel();
+            predictWebcam();
+        };
+    </script>
+</body>
+</html>
